@@ -1,0 +1,1 @@
+class ApiConstants { ApiConstants._(); static const String baseUrl=String.fromEnvironment('API_BASE_URL',defaultValue:'https://api.lifetown-maquis.com/v1'); static const login='/auth/login',register='/auth/register',refreshToken='/auth/refresh',logout='/auth/logout',menu='/menu',orders='/orders',stocks='/stocks',staff='/staff',dashboard='/dashboard'; }

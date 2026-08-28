@@ -1,121 +1,187 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'core/database/secure_token_storage.dart';
+import 'core/network/dio_client.dart';
+import 'features/auth/data/datasources/auth_remote_datasource.dart';
+import 'features/auth/data/repositories/auth_repository_impl.dart';
+import 'features/auth/domain/usecases/login.dart';
+import 'features/auth/domain/usecases/logout.dart';
+import 'features/auth/domain/usecases/register.dart';
+import 'features/auth/presentation/controllers/auth_controller.dart';
+import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/pages/register_page.dart';
+import 'features/menu/data/datasources/menu_local_datasource.dart';
+import 'features/menu/data/datasources/menu_remote_datasource.dart';
+import 'features/menu/data/repositories/menu_repository_impl.dart';
+import 'features/menu/domain/usecases/get_menu.dart';
+import 'features/menu/presentation/controllers/menu_controller.dart'
+    as menu_feature;
+import 'features/menu/presentation/pages/menu_page.dart';
+import 'features/orders/data/datasources/order_remote_datasource.dart';
+import 'features/orders/data/repositories/order_repository_impl.dart';
+import 'features/orders/domain/usecases/get_orders.dart';
+import 'features/orders/presentation/controllers/orders_controller.dart';
+import 'features/orders/presentation/pages/orders_page.dart';
+import 'features/stock/data/datasources/stock_remote_datasource.dart';
+import 'features/stock/data/repositories/stock_repository_impl.dart';
+import 'features/stock/domain/usecases/get_stocks.dart';
+import 'features/stock/presentation/controllers/stock_controller.dart';
+import 'features/stock/presentation/pages/stock_page.dart';
+import 'features/staff/data/datasources/staff_remote_datasource.dart';
+import 'features/staff/data/repositories/staff_repository_impl.dart';
+import 'features/staff/domain/usecases/get_waitresses.dart';
+import 'features/staff/presentation/controllers/staff_controller.dart';
+import 'features/staff/presentation/pages/staff_page.dart';
+import 'features/dashboard/data/datasources/dashboard_remote_datasource.dart';
+import 'features/dashboard/data/repositories/dashboard_repository_impl.dart';
+import 'features/dashboard/domain/usecases/get_dashboard.dart';
+import 'features/dashboard/presentation/controllers/dashboard_controller.dart';
+import 'features/dashboard/presentation/pages/dashboard_page.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  final box = await Hive.openBox<String>('lifetown_cache');
+  final storage = SecureTokenStorage();
+  final client = DioClient(tokenStorage: storage);
+  final authRepository = AuthRepositoryImpl(
+    remoteDataSource: AuthRemoteDataSource(dio: client.dio),
+    tokenStorage: storage,
+  );
+  final auth = AuthController(
+    loginUseCase: Login(authRepository),
+    registerUseCase: Register(authRepository),
+    logoutUseCase: Logout(authRepository),
+  );
+  final menu = menu_feature.MenuController(
+    getMenu: GetMenu(
+      MenuRepositoryImpl(
+        remote: MenuRemoteDataSource(dio: client.dio),
+        local: MenuLocalDataSource(box: box),
+      ),
+    ),
+  );
+  final orders = OrdersController(
+    GetOrders(
+      OrderRepositoryImpl(remote: OrderRemoteDataSource(dio: client.dio)),
+    ),
+  );
+  final stock = StockController(
+    GetStocks(StockRepositoryImpl(StockRemoteDataSource(dio: client.dio))),
+  );
+  final staff = StaffController(
+    GetWaitresses(StaffRepositoryImpl(StaffRemoteDataSource(client.dio))),
+  );
+  final dash = DashboardController(
+    GetDashboard(
+      DashboardRepositoryImpl(DashboardRemoteDataSource(client.dio)),
+    ),
+  );
+  runApp(
+    LifetownApp(
+      auth: auth,
+      menu: menu,
+      orders: orders,
+      stock: stock,
+      staff: staff,
+      dashboard: dash,
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class LifetownApp extends StatefulWidget {
+  final AuthController auth;
+  final menu_feature.MenuController menu;
+  final OrdersController orders;
+  final StockController stock;
+  final StaffController staff;
+  final DashboardController dashboard;
+  const LifetownApp({
+    super.key,
+    required this.auth,
+    required this.menu,
+    required this.orders,
+    required this.stock,
+    required this.staff,
+    required this.dashboard,
+  });
+  @override
+  State<LifetownApp> createState() => _LifetownAppState();
+}
 
-  // This widget is the root of your application.
+class _LifetownAppState extends State<LifetownApp> {
+  int index = 0;
+  bool register = false;
+  @override
+  void initState() {
+    super.initState();
+    widget.auth.addListener(_authChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.auth.removeListener(_authChanged);
+    super.dispose();
+  }
+
+  void _authChanged() => mounted ? setState(() {}) : null;
+  Future<void> logout() async {
+    await widget.auth.logout();
+    if (mounted) {
+      setState(() {
+        index = 0;
+        register = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'LIFETOWN',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: widget.auth.isAuthenticated
+          ? _shell()
+          : register
+          ? RegisterPage(
+              controller: widget.auth,
+              onLogin: () => setState(() => register = false),
+            )
+          : LoginPage(
+              controller: widget.auth,
+              onRegister: () => setState(() => register = true),
+            ),
     );
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+  Widget _shell() {
+    final pages = [
+      DashboardPage(
+        controller: widget.dashboard,
+        onLogout: logout,
+        onNavigate: (i) => setState(() => index = i),
+      ),
+      MenuPage(controller: widget.menu),
+      OrdersPage(controller: widget.orders),
+      StockPage(controller: widget.stock),
+      StaffPage(controller: widget.staff),
+    ];
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      body: pages[index],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) => setState(() => index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Accueil'),
+          NavigationDestination(icon: Icon(Icons.local_bar), label: 'Menu'),
+          NavigationDestination(icon: Icon(Icons.receipt), label: 'Commandes'),
+          NavigationDestination(icon: Icon(Icons.inventory), label: 'Stocks'),
+          NavigationDestination(icon: Icon(Icons.people), label: 'Serveuses'),
+        ],
       ),
     );
   }

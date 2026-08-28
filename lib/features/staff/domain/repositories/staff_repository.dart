@@ -1,0 +1,1 @@
+import '../entities/waitress.dart';abstract class StaffRepository{Future<List<WaitressEntity>> getWaitresses();Future<WaitressEntity> createWaitress({required String name,String? phone});Future<WaitressEntity> updateWaitress({required String id,required String name,String? phone,required bool active});}

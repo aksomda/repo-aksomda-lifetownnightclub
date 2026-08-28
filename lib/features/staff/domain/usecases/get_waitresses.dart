@@ -1,0 +1,1 @@
+import '../entities/waitress.dart';import '../repositories/staff_repository.dart';class GetWaitresses{final StaffRepository r;GetWaitresses(this.r);Future<List<WaitressEntity>> call()=>r.getWaitresses();}

@@ -1,0 +1,1 @@
+class DashboardSummary{final int products,orders,lowStocks,staff;final double revenue;const DashboardSummary({required this.products,required this.orders,required this.lowStocks,required this.staff,required this.revenue});}

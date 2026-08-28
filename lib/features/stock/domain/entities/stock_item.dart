@@ -1,0 +1,1 @@
+class StockItemEntity { final String productId,productName; final double quantity,minimumQuantity; final String unit; const StockItemEntity({required this.productId,required this.productName,required this.quantity,required this.minimumQuantity,required this.unit}); bool get isLowStock=>quantity<=minimumQuantity; }

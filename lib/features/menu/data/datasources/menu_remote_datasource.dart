@@ -1,0 +1,2 @@
+import 'package:dio/dio.dart'; import '../../../../core/constants/api_constants.dart'; import '../models/menu_item_model.dart';
+class MenuRemoteDataSource { final Dio dio; MenuRemoteDataSource({required this.dio}); Future<List<MenuItemModel>> getMenu() async { final d=(await dio.get(ApiConstants.menu)).data; final list=d is Map&&d['data'] is List?d['data'] as List:d as List; return list.whereType<Map>().map((e)=>MenuItemModel.fromJson(Map<String,dynamic>.from(e))).toList(); } }

@@ -1,0 +1,1 @@
+import '../entities/dashboard_summary.dart';import '../repositories/dashboard_repository.dart';class GetDashboard{final DashboardRepository r;GetDashboard(this.r);Future<DashboardSummary> call()=>r.getSummary();}
