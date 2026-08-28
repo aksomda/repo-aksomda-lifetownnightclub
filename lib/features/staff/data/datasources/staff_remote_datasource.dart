@@ -1,73 +1,42 @@
-// Ajouté : la feature "staff" (serveuses) n'avait ni datasource ni
-// repository implémenté.
 import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_constants.dart';
-import '../../../../core/errors/app_exception.dart';
-import '../../domain/entities/waitress.dart';
+import '../models/waitress_model.dart';
 
 class StaffRemoteDataSource {
   final Dio dio;
+  StaffRemoteDataSource(this.dio);
 
-  StaffRemoteDataSource({required this.dio});
-
-  Future<List<WaitressEntity>> getWaitresses() async {
-    try {
-      final response = await dio.get(ApiConstants.staff);
-      final data = response.data as List;
-      return data.map((json) => _fromJson(json as Map<String, dynamic>)).toList();
-    } on DioException catch (e) {
-      throw _mapDioException(e);
-    }
+  Future<List<WaitressModel>> getWaitresses() async {
+    final d = (await dio.get(ApiConstants.staff)).data;
+    final l = d is Map && d['data'] is List ? d['data'] as List : d as List;
+    return l
+        .whereType<Map>()
+        .map((x) => WaitressModel.fromJson(Map<String, dynamic>.from(x)))
+        .toList();
   }
 
-  Future<WaitressEntity> createWaitress({
+  Future<WaitressModel> createWaitress({
     required String name,
     String? phone,
   }) async {
-    try {
-      final response = await dio.post(
-        ApiConstants.staff,
-        data: {'name': name, 'phone': phone},
-      );
-      return _fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _mapDioException(e);
-    }
+    final r = await dio.post(
+      ApiConstants.staff,
+      data: {'name': name, 'phone': phone},
+    );
+    return WaitressModel.fromJson(Map<String, dynamic>.from(r.data as Map));
   }
 
-  Future<WaitressEntity> updateWaitress({
+  Future<WaitressModel> updateWaitress({
     required String id,
     required String name,
     String? phone,
     required bool active,
   }) async {
-    try {
-      final response = await dio.put(
-        '${ApiConstants.staff}/$id',
-        data: {'name': name, 'phone': phone, 'active': active},
-      );
-      return _fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw _mapDioException(e);
-    }
-  }
-
-  WaitressEntity _fromJson(Map<String, dynamic> json) {
-    return WaitressEntity(
-      id: json['id'].toString(),
-      name: json['name'] as String? ?? '',
-      phone: json['phone'] as String?,
-      active: json['active'] as bool? ?? true,
+    final r = await dio.patch(
+      '${ApiConstants.staff}/$id',
+      data: {'name': name, 'phone': phone, 'active': active},
     );
-  }
-
-  AppException _mapDioException(DioException e) {
-    if (e.type == DioExceptionType.connectionError ||
-        e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout) {
-      return const NetworkException();
-    }
-    return ServerException(e.message ?? 'Erreur serveur inconnue.');
+    return WaitressModel.fromJson(Map<String, dynamic>.from(r.data as Map));
   }
 }

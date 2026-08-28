@@ -1,2 +1,52 @@
 import '../../domain/entities/order.dart';
-class OrderModel extends OrderEntity { const OrderModel({required super.id,super.tableId,super.waitressId,required super.items,required super.status,required super.createdAt}); factory OrderModel.fromJson(Map<String,dynamic> j){final l=j['items'] is List?j['items'] as List:[];return OrderModel(id:'${j['id']??''}',tableId:j['table_id']?.toString(),waitressId:j['waitress_id']?.toString(),status:'${j['status']??'pending'}',createdAt:DateTime.tryParse('${j['created_at']??''}')??DateTime.now(),items:l.whereType<Map>().map((x)=>OrderItem(productId:'${x['product_id']??''}',productName:'${x['product_name']??''}',quantity:(x['quantity'] as num?)?.toInt()??0,unitPrice:(x['unit_price'] as num?)?.toDouble()??0)).toList());}}
+
+class OrderModel extends OrderEntity {
+  const OrderModel({
+    required super.id,
+    super.tableId,
+    super.waitressId,
+    required super.items,
+    required super.status,
+    required super.createdAt,
+  });
+
+  factory OrderModel.fromJson(Map<String, dynamic> j) {
+    final l = j['items'] is List ? j['items'] as List : [];
+    return OrderModel(
+      id: '${j['id'] ?? ''}',
+      tableId: j['table_id']?.toString(),
+      waitressId: j['waitress_id']?.toString(),
+      status: '${j['status'] ?? 'pending'}',
+      createdAt: DateTime.tryParse('${j['created_at'] ?? ''}') ?? DateTime.now(),
+      items: l
+          .whereType<Map>()
+          .map(
+            (x) => OrderItem(
+              productId: '${x['product_id'] ?? ''}',
+              productName: '${x['product_name'] ?? ''}',
+              quantity: (x['quantity'] as num?)?.toInt() ?? 0,
+              unitPrice: (x['unit_price'] as num?)?.toDouble() ?? 0,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'table_id': tableId,
+    'waitress_id': waitressId,
+    'status': status,
+    'created_at': createdAt.toIso8601String(),
+    'items': items
+        .map(
+          (i) => {
+            'product_id': i.productId,
+            'product_name': i.productName,
+            'quantity': i.quantity,
+            'unit_price': i.unitPrice,
+          },
+        )
+        .toList(),
+  };
+}

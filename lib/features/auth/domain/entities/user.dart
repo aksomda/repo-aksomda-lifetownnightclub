@@ -3,8 +3,8 @@ class User {
   final String name;
   final String prename;
   final int age;
-  final String email;
   final String telephone;
+  final String email;
   final String? role;
 
   const User({
@@ -12,8 +12,8 @@ class User {
     required this.name,
     required this.prename,
     required this.age,
-    required this.email,
     required this.telephone,
+    required this.email,
     this.role,
   });
 }

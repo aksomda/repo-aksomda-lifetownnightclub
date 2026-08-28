@@ -1,10 +1,1 @@
-import '../entities/stock_item.dart';
-
-abstract class StockRepository {
-  Future<List<StockItemEntity>> getStocks();
-
-  Future<StockItemEntity> updateQuantity({
-    required String productId,
-    required double quantity,
-  });
-}
+import '../entities/stock_item.dart';abstract class StockRepository{Future<List<StockItemEntity>> getStocks();Future<StockItemEntity> updateQuantity({required String productId,required double quantity});}

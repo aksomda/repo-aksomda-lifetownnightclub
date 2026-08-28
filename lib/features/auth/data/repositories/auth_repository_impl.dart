@@ -1,12 +1,8 @@
-// Bug corrigé : ce fichier était vide. L'implémentation réelle vivait par
-// erreur dans `domain/repositories/auth_repository_impl.dart` — une
-// implémentation concrète (qui parle à Dio et au stockage sécurisé) n'a
-// rien à faire dans la couche domain, qui ne doit contenir que des
-// contrats abstraits. Le contenu a été déplacé ici.
 import '../../../../core/database/secure_token_storage.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
+import '../models/auth_response_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -17,19 +13,23 @@ class AuthRepositoryImpl implements AuthRepository {
     required this.tokenStorage,
   });
 
-  @override
-  Future<User> login({required String email, required String password}) async {
-    final result = await remoteDataSource.login(
-      email: email,
-      password: password,
-    );
-
+  Future<User> _saveSession(Future<AuthResponseModel> request) async {
+    final response = await request;
     await tokenStorage.saveTokens(
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
     );
+    return response.user;
+  }
 
-    return result.user;
+  @override
+  Future<User> login({
+    required String email,
+    required String password,
+  }) {
+    return _saveSession(
+      remoteDataSource.login(email: email, password: password),
+    );
   }
 
   @override
@@ -40,22 +40,17 @@ class AuthRepositoryImpl implements AuthRepository {
     required String telephone,
     required String email,
     required String password,
-  }) async {
-    final result = await remoteDataSource.register(
-      name: name,
-      prename: prename,
-      age: age,
-      telephone: telephone,
-      email: email,
-      password: password,
+  }) {
+    return _saveSession(
+      remoteDataSource.register(
+        name: name,
+        prename: prename,
+        age: age,
+        telephone: telephone,
+        email: email,
+        password: password,
+      ),
     );
-
-    await tokenStorage.saveTokens(
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-    );
-
-    return result.user;
   }
 
   @override
@@ -70,20 +65,21 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<String?> refreshToken() async {
     final refreshToken = await tokenStorage.getRefreshToken();
-
-    if (refreshToken == null) {
+    if (refreshToken == null || refreshToken.isEmpty) {
       return null;
     }
 
-    final accessToken = await remoteDataSource.refreshToken(refreshToken);
-
-    if (accessToken != null) {
-      await tokenStorage.saveTokens(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-      );
+    final response = await remoteDataSource.refreshToken(
+      refreshToken: refreshToken,
+    );
+    if (response.accessToken.isEmpty) {
+      return null;
     }
 
-    return accessToken;
+    await tokenStorage.saveTokens(
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken ?? refreshToken,
+    );
+    return response.accessToken;
   }
 }
