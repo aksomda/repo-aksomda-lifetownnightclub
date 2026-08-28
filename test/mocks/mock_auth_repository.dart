@@ -1,6 +1,71 @@
 import 'package:repo_aksomda_lifetownnightclub/features/auth/domain/entities/user.dart';
 import 'package:repo_aksomda_lifetownnightclub/features/auth/domain/repositories/auth_repository.dart';
-class MockAuthRepository implements AuthRepository { User? currentUser; bool shouldFail=false;
- @override Future<User> login({required String email,required String password}) async {if(shouldFail)throw Exception('Identifiants invalides');currentUser=const User(id:'1',name:'Somda',prename:'Clément',age:30,email:'admin@lifetown.com',telephone:'70000000',role:'admin');return currentUser!;}
- @override Future<User> register({required String name,required String prename,required int age,required String telephone,required String email,required String password}) async {currentUser=User(id:'2',name:name,prename:prename,age:age,email:email,telephone:telephone,role:'user');return currentUser!;}
- @override Future<void> logout()async{currentUser=null;} @override Future<String?> refreshToken()async=>'new-token';}
+
+class MockAuthRepository implements AuthRepository {
+  bool shouldFail = false;
+
+  User? currentUser;
+
+  @override
+  Future<User> login({required String email, required String password}) async {
+    if (shouldFail) {
+      throw Exception('Identifiants invalides');
+    }
+
+    final user = User(
+      id: '1',
+      name: 'Administrateur',
+      prename: "Application",
+      age: 43,
+      telephone: "58871469",
+      email: email,
+      role: 'admin',
+    );
+
+    currentUser = user;
+
+    return user;
+  }
+
+  @override
+  Future<User> register({
+    required String name,
+    required String prename,
+    required int age,
+    required String telephone,
+    required String email,
+    required String password,
+  }) async {
+    if (shouldFail) {
+      throw Exception('Erreur inscription');
+    }
+
+    final user = User(
+      id: '2',
+      name: name,
+      prename: prename,
+      age: age,
+      telephone: telephone,
+      email: email,
+      role: 'user',
+    );
+
+    currentUser = user;
+
+    return user;
+  }
+
+  @override
+  Future<void> logout() async {
+    currentUser = null;
+  }
+
+  @override
+  Future<String?> refreshToken() async {
+    if (shouldFail) {
+      return null;
+    }
+
+    return 'new-access-token';
+  }
+}

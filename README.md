@@ -1,176 +1,154 @@
-# LIFETOWN — Gestion des stocks de boissons
+# 🍺 LIFETOWN — App Flutter de gestion de maquis/nightclub
 
-Application Flutter de gestion d'un maquis/bar, conçue pour piloter le menu, les commandes, les stocks et les serveuses depuis une API REST.
+Application mobile Flutter connectée à une API REST réelle (FastAPI,
+dépôt séparé `api_lifetown`) pour la gestion d'un maquis : catalogue de
+boissons, stocks, serveuses et commandes, avec authentification JWT et
+mode hors-ligne.
 
-## Fonctionnalités
+## 🩹 Corrections apportées (le projet ne compilait pas du tout)
 
-- Authentification JWT : connexion, inscription et déconnexion.
-- Injection automatique du JWT avec un intercepteur Dio.
-- Renouvellement automatique du token après une réponse HTTP 401 lorsque le refresh token est disponible.
-- Cinq écrans alimentés par API REST : **Tableau de bord, Menu, Commandes, Stocks, Serveuses**.
-- Cache local Hive du menu.
-- Consultation du menu depuis le cache lorsque l'API n'est pas accessible.
-- Messages utilisateur pour les erreurs réseau, 401 et erreurs serveur.
-- Catalogue initial des boissons :
-  - Bières : Sobbra, Brakina, Beaufort, Castel, Guinness, Doppel, Brafort, Brafaso.
-  - Sucreries : Schweppes, Coca, Fanta, Chill pomme, Chill citron.
-- Tests de repository, tests widget et test de connexion Flutter ↔ API avec adaptateur HTTP Dio simulé.
+Le code fourni initialement ne compilait pas et plusieurs écrans
+n'existaient pas réellement. Corrections principales :
 
-## Architecture
+- **Imports cassés** (`core/storage/...` → `core/database/...`) dans
+  `main.dart` et `core/network/auth_interceptor.dart`.
+- **Fichiers dupliqués/vides à cheval entre `domain/` et `data/`**
+  (violation de la Clean Architecture) : `auth_repository_impl.dart`,
+  `auth_response_model.dart`, `menu_item_model.dart`,
+  `menu_repository_impl.dart` — tout consolidé dans les bonnes couches.
+- **`register_page.dart`** : les 4 champs (nom, prénom, âge, téléphone)
+  partageaient le même `TextEditingController`, et l'appel à
+  `register()` omettait 3 paramètres requis — réécrit avec un
+  controller indépendant par champ.
+- **`AuthRemoteDataSource.register()`** n'acceptait pas
+  prénom/âge/téléphone alors que le reste du code les exigeait —
+  corrigé.
+- **`refresh_token_interceptor.dart`** était vide — implémenté (retry
+  automatique sur 401, une seule requête de refresh à la fois).
+- **`menu_page.dart`** ne contenait aucun widget (copie du
+  controller) — remplacé par un vrai écran.
+- **`hive_flutter`** manquant du `pubspec.yaml` — ajouté ; `provider`
+  ajouté pour l'injection de dépendances entre écrans.
+- **`main.dart`** ne naviguait nulle part (`Scaffold` vide) —
+  reconstruit avec une vraie navigation Login/Register → Dashboard →
+  Menu/Commandes/Stocks/Serveuses.
+- Le `MenuItemModel` utilisait `@HiveType`/`@HiveField` avec un fichier
+  `.g.dart` jamais généré (aucun `build_runner` n'avait tourné) —
+  adapter Hive réécrit à la main, sans dépendance à la génération de
+  code.
 
-Le projet suit une organisation **Feature-First + Clean Architecture**.
+## ➕ Fonctionnalités ajoutées pour respecter l'énoncé
 
-Chaque fonctionnalité est découpée en trois couches :
+Le README d'origine promettait 5 écrans connectés à une API REST, mais
+seules les couches `menu` et une partie de `auth` existaient
+réellement. Couches **data + presentation complètes** ajoutées pour
+`orders`, `stock`, `staff` (datasources, repository impl, controllers,
+pages), avec 5 écrans réels connectés à l'API :
 
-```text
-lib/features/<feature>/
-├── data/
-│   ├── datasources/       # API REST et cache
-│   ├── models/            # DTO / mapping JSON
-│   └── repositories/      # implémentation des contrats
-├── domain/
-│   ├── entities/          # objets métier indépendants de Flutter/Dio
-│   ├── repositories/      # contrats abstraits
-│   └── usecases/          # cas d'utilisation
-└── presentation/
-    ├── controllers/       # état et orchestration UI
-    └── pages/             # widgets / écrans
+1. **Dashboard** — indicateurs agrégés (commandes en cours, stocks
+   faibles, serveuses actives).
+2. **Menu** — catalogue des boissons (bières & sucreries).
+3. **Commandes** — historique + création de commandes.
+4. **Stocks** — suivi et mise à jour des quantités.
+5. **Serveuses** — liste + ajout.
+
+## 🖥️ API réelle associée : `api_lifetown`
+
+Cette application est câblée sur une API FastAPI dédiée (dépôt séparé).
+Cette API a elle-même été **corrigée et alignée** sur le contrat exact
+attendu par les datasources Dart ci-dessous (voir le README de
+`api_lifetown` pour le détail des corrections apportées côté serveur :
+bug de syntaxe bloquant, ajout de l'authentification JWT inexistante à
+l'origine, renommage des routes/champs français → anglais).
+
+| Feature Flutter | Route API | Auth requise |
+|---|---|---|
+| Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` | non (sauf logout) |
+| Menu | `GET /menu` | oui |
+| Stock | `GET /stocks`, `PATCH /stocks/{id}` | oui |
+| Serveuses | `GET/POST /staff`, `PUT /staff/{id}` | oui |
+| Commandes | `GET/POST /orders`, `PATCH /orders/{id}/status` | oui |
+| Tables | `GET/POST /tables` | oui (non consommé par un écran pour l'instant) |
+
+Configurer l'URL de base dans `lib/core/constants/api_constants.dart` :
+
+```dart
+static const String baseUrl = 'http://10.0.2.2:8000'; // émulateur Android -> API en local
 ```
 
-Le domaine ne dépend pas de Dio, Hive ou Flutter. Les implémentations techniques restent dans `data`.
+## 🏛️ Architecture
 
-## Écrans
+Structure **Feature-First** combinée à la **Clean Architecture** :
+- **Domain** : entités métier + contrats (interfaces de repository).
+- **Data** : implémentation des repositories, modèles sérialisables,
+  persistance locale (**Hive** pour le menu).
+- **Presentation** : controllers (`ChangeNotifier`) + écrans, injectés
+  via `provider`.
 
-1. **Connexion** — authentification.
-2. **Inscription** — nom, prénom, âge, téléphone, email et mot de passe.
-3. **Tableau de bord** — indicateurs remontés par `/dashboard`.
-4. **Menu** — boissons et produits remontés par `/menu`, avec cache Hive.
-5. **Commandes** — commandes remontées par `/orders`.
-6. **Stocks** — niveaux de stock remontés par `/stocks`.
-7. **Serveuses** — personnel remonté par `/staff`.
-
-## Contrat API attendu
-
-Par défaut :
-
-```text
-https://api.lifetown-maquis.com/v1
+```
+lib/
+├── core/
+│   ├── constants/          # api_constants.dart, lifetown_catalog.dart
+│   ├── network/            # DioClient, AuthInterceptor, RefreshTokenInterceptor
+│   ├── errors/              # AppException et sous-classes
+│   └── database/            # SecureTokenStorage (flutter_secure_storage)
+├── features/
+│   ├── auth/        (data / domain / presentation)
+│   ├── menu/         (data / domain / presentation) — cache Hive + mode hors-ligne
+│   ├── orders/       (data / domain / presentation)
+│   ├── stock/        (data / domain / presentation)
+│   ├── staff/        (data / domain / presentation)
+│   └── tables/       (domain seulement — non branché à un écran)
+└── main.dart          # injection de dépendances + navigation
 ```
 
-Il est recommandé de fournir l'URL réelle au build :
+## 🚀 Fonctionnalités clés
+
+1. **Authentification JWT** : login/register/logout, intercepteur Dio
+   d'injection de token, refresh automatique sur 401.
+2. **5 écrans connectés à l'API REST** (voir tableau ci-dessus).
+3. **Cache local (Hive)** pour le menu, avec **bascule automatique sur
+   le cache** en l'absence de réseau (bandeau "mode hors-ligne").
+4. **Gestion d'erreurs réseau** avec messages utilisateur (pas de stack
+   trace exposée).
+
+## ⚙️ Configuration du projet
 
 ```bash
-flutter run --dart-define=API_BASE_URL=https://mon-api.example.com/v1
-```
-
-Endpoints attendus :
-
-```text
-POST /auth/login
-POST /auth/register
-POST /auth/refresh
-POST /auth/logout
-GET  /dashboard
-GET  /menu
-GET  /orders
-GET  /stocks
-GET  /staff
-```
-
-Réponse d'authentification minimale :
-
-```json
-{
-  "access_token": "jwt-access-token",
-  "refresh_token": "jwt-refresh-token",
-  "user": {
-    "id": 1,
-    "name": "Somda",
-    "prename": "Clément",
-    "age": 30,
-    "telephone": "70000000",
-    "email": "admin@lifetown.com",
-    "role": "admin"
-  }
-}
-```
-
-Pour les listes, l'application accepte soit directement un tableau JSON, soit un objet contenant `data`.
-
-## Persistance et mode hors-ligne
-
-Hive est utilisé sans `build_runner` ni adaptateur généré. Le menu est sérialisé en JSON dans une `Box<String>`.
-
-Lors d'un chargement normal :
-
-1. si le menu est déjà en cache, il est affiché immédiatement ;
-2. un rafraîchissement forcé interroge l'API ;
-3. la réponse API remplace le cache ;
-4. en cas d'échec réseau, le dernier cache disponible est retourné.
-
-Le token JWT et le refresh token sont conservés séparément dans `flutter_secure_storage`.
-
-## Tests
-
-Lancer toute la suite :
-
-```bash
-flutter test
-```
-
-Analyse statique :
-
-```bash
-flutter analyze
-```
-
-La suite couvre notamment :
-
-- 4 tests sur le comportement de `MockAuthRepository implements AuthRepository` ;
-- 4 tests du `MenuRepositoryImpl` : API, cache, mode hors-ligne et absence simultanée d'API/cache ;
-- 2 tests widget de connexion ;
-- 1 test widget d'inscription ;
-- 1 test de connexion Flutter ↔ API utilisant un faux `HttpClientAdapter` Dio et vérifiant l'injection `Authorization: Bearer ...`.
-
-## Configuration du backend
-
-Le backend reste indépendant de l'application Flutter. Une fois l'API créée, il suffit de respecter les endpoints et les structures JSON décrites ci-dessus, puis de fournir `API_BASE_URL` au lancement.
-
-Pour une mise en production, il est recommandé d'ajouter :
-
-- validation stricte des schémas JSON côté client et serveur ;
-- pagination des commandes et du stock ;
-- journalisation centralisée sans données sensibles ;
-- gestion d'une file de synchronisation pour les écritures hors-ligne ;
-- CI GitHub Actions avec `flutter analyze` et `flutter test` ;
-- tests d'intégration contre un environnement API de recette.
-
-## Validation de l'architecture
-
-Les implémentations de repository appartiennent exclusivement à `data/repositories`.
-Les modèles JSON appartiennent à `data/models`. Les entités et interfaces de repository
-restent dans `domain`.
-
-Ne pas recréer les anciens fichiers suivants dans `domain` :
-- `auth_repository_impl.dart`
-- `auth_response_model.dart`
-- `menu_item_model.dart`
-- `menu_repository_impl.dart`
-
-Le projet n'utilise pas de fichier `menu_item_model.g.dart` : le cache Hive est sérialisé
-explicitement afin d'éviter une dépendance à `build_runner`.
-
-## Vérification locale
-
-```bash
-flutter clean
 flutter pub get
-flutter analyze
+flutter run
+```
+
+Aucune génération de code n'est requise (pas de `build_runner`) : les
+adapters Hive sont écrits à la main dans
+`lib/features/menu/data/models/menu_item_model.dart`.
+
+## 🧪 Tests
+
+```bash
 flutter test
 ```
 
-Pour vérifier l'API réelle :
+- `test/mocks/mock_auth_repository.dart` — `MockAuthRepository
+  implements AuthRepository`, tel qu'explicitement demandé par
+  l'énoncé.
+- `test/auth_repository_test.dart` — 7 tests unitaires sur la couche
+  repository (login, register, logout, refresh, cas d'échec).
+- `test/menu_repository_test.dart` — 4 tests fonctionnels sur
+  `MenuRepositoryImpl` avec de vrais fakes écrits à la main (pas de
+  mockito/build_runner) et une vraie Hive Box en répertoire temporaire.
+- `test/login_page_test.dart`, `test/register_page_test.dart`,
+  `test/widget_test.dart` — tests widget (formulaires, affichage,
+  gestion d'erreur).
+- `test/api_connection_test.dart` — test de connexion Flutter ↔ API :
+  exerce la vraie chaîne (`AuthInterceptor`, `SecureTokenStorage`,
+  `AuthRemoteDataSource`, `AuthRepositoryImpl`) via un faux adaptateur
+  HTTP Dio, sans backend réel.
 
-```bash
-flutter run --dart-define=API_BASE_URL=https://votre-api.example.com/v1
-```
+## Limitations connues
+
+- La feature `tables` n'a que sa couche domain : pas d'écran branché
+  pour l'instant (l'API expose pourtant `/tables`).
+- Pas de couche offline/cache pour `orders`/`stock`/`staff` (seul le
+  menu bascule sur le cache Hive en mode hors-ligne).
+- Pas de CI/CD (GitHub Actions) configuré sur ce dépôt.

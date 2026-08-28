@@ -16,7 +16,7 @@ class NetworkException extends AppException {
 
 class UnauthorizedException extends AppException {
   const UnauthorizedException([super.message = 'Votre session a expiré.'])
-    : super(statusCode: 401);
+      : super(statusCode: 401);
 }
 
 class ServerException extends AppException {
@@ -31,6 +31,11 @@ class CacheException extends AppException {
   ]);
 }
 
+// Bug corrigé : l'ancien code déclarait
+// `class ValidationException extends AppException { const ValidationException.name(super.message); }`
+// soit un constructeur *nommé* "name", qui ne pouvait pas être invoqué comme
+// `ValidationException(message)` ailleurs dans le code (erreur de compilation).
+// Remplacé par un constructeur par défaut classique.
 class ValidationException extends AppException {
-  const ValidationException.name(super.message);
+  const ValidationException(super.message);
 }
