@@ -8,9 +8,9 @@ class StockPage extends StatefulWidget {
 }
 
 class _StockPageState extends State<StockPage> {
-  @override void initState() { super.initState(); widget.controller.addListener(_on); widget.controller.load(); }
-  void _on() { if (mounted) setState(() {}); }
-  @override void dispose() { widget.controller.removeListener(_on); super.dispose(); }
+  @override void initState() { super.initState(); widget.controller.addListener(onControllerChanged); widget.controller.load(); }
+  void onControllerChanged() { if (mounted) setState(() {}); }
+  @override void dispose() { widget.controller.removeListener(onControllerChanged); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {

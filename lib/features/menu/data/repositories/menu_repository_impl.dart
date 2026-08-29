@@ -4,22 +4,27 @@ import '../../domain/repositories/menu_repository.dart';
 import '../datasources/menu_local_datasource.dart';
 import '../datasources/menu_remote_datasource.dart';
 
+/// Implémente le contrat du menu avec stratégie réseau puis cache.
 class MenuRepositoryImpl implements MenuRepository {
   final MenuRemoteDataSource remote;
   final MenuLocalDataSource local;
+
   MenuRepositoryImpl({required this.remote, required this.local});
 
   @override
   Future<List<MenuItemEntity>> getMenu({bool forceRefresh = false}) async {
     try {
-      final r = await remote.getMenu();
-      await local.saveMenu(r);
-      return r;
-    } catch (e) {
-      // Hors-ligne (ou API en erreur) : on retombe sur le dernier menu mis
-      // en cache s'il existe, sinon on remonte une erreur utilisateur claire.
-      if (local.hasData) return local.getMenu();
-      throw mapDioException(e);
+      final result = await remote.getMenu();
+      try {
+        await local.saveMenu(result);
+      } catch (_) {
+        // Une panne de persistance locale ne doit pas masquer une réponse API valide.
+      }
+      return result;
+    } catch (error) {
+      final cached = local.getMenu();
+      if (cached != null) return cached;
+      throw mapDioException(error);
     }
   }
 }

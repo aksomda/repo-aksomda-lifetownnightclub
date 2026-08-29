@@ -1,3 +1,4 @@
+/// Base des erreurs présentables à l'utilisateur.
 class AppException implements Exception {
   final String message;
   final int? statusCode;
@@ -10,18 +11,30 @@ class AppException implements Exception {
 
 class NetworkException extends AppException {
   const NetworkException([
-    super.message = 'Impossible de contacter le serveur.',
+    super.message = 'Impossible de contacter le serveur. Vérifiez votre connexion.',
   ]);
 }
 
 class UnauthorizedException extends AppException {
   const UnauthorizedException([super.message = 'Votre session a expiré.'])
-    : super(statusCode: 401);
+      : super(statusCode: 401);
+}
+
+class ForbiddenException extends AppException {
+  const ForbiddenException([
+    super.message = 'Vous n’êtes pas autorisé à effectuer cette action.',
+  ]) : super(statusCode: 403);
+}
+
+class NotFoundException extends AppException {
+  const NotFoundException([
+    super.message = 'La ressource demandée est introuvable.',
+  ]) : super(statusCode: 404);
 }
 
 class ServerException extends AppException {
   const ServerException([
-    super.message = 'Le serveur est momentanément indisponible.',
+    super.message = 'Le serveur est momentanément indisponible. Réessayez plus tard.',
   ]);
 }
 

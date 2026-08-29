@@ -8,9 +8,9 @@ class MenuPage extends StatefulWidget {
 }
 
 class _MenuPageState extends State<MenuPage> {
-  @override void initState() { super.initState(); widget.controller.addListener(_changed); widget.controller.load(); }
-  void _changed() { if (mounted) setState(() {}); }
-  @override void dispose() { widget.controller.removeListener(_changed); super.dispose(); }
+  @override void initState() { super.initState(); widget.controller.addListener(onControllerChanged); widget.controller.load(); }
+  void onControllerChanged() { if (mounted) setState(() {}); }
+  @override void dispose() { widget.controller.removeListener(onControllerChanged); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {

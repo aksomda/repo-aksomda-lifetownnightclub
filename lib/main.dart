@@ -135,16 +135,24 @@ class _LifetownAppState extends State<LifetownApp> {
   @override
   void initState() {
     super.initState();
-    widget.auth.addListener(_authChanged);
+    widget.auth.addListener(authChanged);
   }
 
   @override
   void dispose() {
-    widget.auth.removeListener(_authChanged);
+    widget.auth.removeListener(authChanged);
+    widget.auth.dispose();
+    widget.menu.dispose();
+    widget.orders.dispose();
+    widget.stock.dispose();
+    widget.staff.dispose();
+    widget.dashboard.dispose();
     super.dispose();
   }
 
-  void _authChanged() => mounted ? setState(() {}) : null;
+  void authChanged() {
+    if (mounted) setState(() {});
+  }
   Future<void> logout() async {
     await widget.auth.logout();
     if (mounted) {
@@ -165,7 +173,7 @@ class _LifetownAppState extends State<LifetownApp> {
         useMaterial3: true,
       ),
       home: widget.auth.isAuthenticated
-          ? _shell()
+          ? buildShell()
           : register
           ? RegisterPage(
               controller: widget.auth,
@@ -178,7 +186,7 @@ class _LifetownAppState extends State<LifetownApp> {
     );
   }
 
-  Widget _shell() {
+  Widget buildShell() {
     final pages = [
       DashboardPage(
         controller: widget.dashboard,

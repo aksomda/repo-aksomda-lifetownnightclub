@@ -40,7 +40,7 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -74,7 +74,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
+  InputDecoration decoration(String label) => InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
       );
@@ -94,20 +94,20 @@ class _RegisterPageState extends State<RegisterPage> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: _decoration('Nom'),
-                    validator: _required,
+                    decoration: decoration('Nom'),
+                    validator: requiredField,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _prenameController,
-                    decoration: _decoration('Prénom'),
-                    validator: _required,
+                    decoration: decoration('Prénom'),
+                    validator: requiredField,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
-                    decoration: _decoration('Âge'),
+                    decoration: decoration('Âge'),
                     validator: (value) {
                       final age = int.tryParse(value?.trim() ?? '');
                       return age == null || age <= 0 ? 'Âge invalide' : null;
@@ -117,14 +117,14 @@ class _RegisterPageState extends State<RegisterPage> {
                   TextFormField(
                     controller: _telephoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: _decoration('Téléphone'),
-                    validator: _required,
+                    decoration: decoration('Téléphone'),
+                    validator: requiredField,
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: _decoration('Email'),
+                    decoration: decoration('Email'),
                     validator: (value) =>
                         value == null || !value.contains('@')
                             ? 'Email invalide'
@@ -134,7 +134,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: _decoration('Mot de passe'),
+                    decoration: decoration('Mot de passe'),
                     validator: (value) => value == null || value.length < 6
                         ? '6 caractères minimum'
                         : null,
@@ -149,7 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       return SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: _submit,
+                          onPressed: submit,
                           child: const Text('Créer le compte'),
                         ),
                       );
@@ -168,6 +168,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  String? _required(String? value) =>
+  String? requiredField(String? value) =>
       value == null || value.trim().isEmpty ? 'Requis' : null;
 }

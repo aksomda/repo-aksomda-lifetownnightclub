@@ -4,22 +4,27 @@ import '../../domain/repositories/staff_repository.dart';
 import '../datasources/staff_local_datasource.dart';
 import '../datasources/staff_remote_datasource.dart';
 
+/// Implémente le personnel avec cache de lecture et synchronisation des écritures.
 class StaffRepositoryImpl implements StaffRepository {
   final StaffRemoteDataSource remote;
   final StaffLocalDataSource local;
+
   StaffRepositoryImpl({required this.remote, required this.local});
 
   @override
   Future<List<WaitressEntity>> getWaitresses() async {
     try {
-      final r = await remote.getWaitresses();
-      await local.saveWaitresses(r);
-      return r;
-    } catch (e) {
-      // Hors-ligne (ou API en erreur) : on retombe sur le dernier
-      // personnel mis en cache s'il existe, sinon erreur utilisateur claire.
-      if (local.hasData) return local.getWaitresses();
-      throw mapDioException(e);
+      final result = await remote.getWaitresses();
+      try {
+        await local.saveWaitresses(result);
+      } catch (_) {
+        // Une panne de persistance locale ne doit pas masquer une réponse API valide.
+      }
+      return result;
+    } catch (error) {
+      final cached = local.getWaitresses();
+      if (cached != null) return cached;
+      throw mapDioException(error);
     }
   }
 
@@ -29,9 +34,18 @@ class StaffRepositoryImpl implements StaffRepository {
     String? phone,
   }) async {
     try {
-      return await remote.createWaitress(name: name, phone: phone);
-    } catch (e) {
-      throw mapDioException(e);
+      final created = await remote.createWaitress(name: name, phone: phone);
+      final cached = local.getWaitresses();
+      try {
+        await local.saveWaitresses(
+          cached == null ? [created] : [...cached, created],
+        );
+      } catch (_) {
+        // La mutation API reste réussie même si le cache local échoue.
+      }
+      return created;
+    } catch (error) {
+      throw mapDioException(error);
     }
   }
 
@@ -43,14 +57,26 @@ class StaffRepositoryImpl implements StaffRepository {
     required bool active,
   }) async {
     try {
-      return await remote.updateWaitress(
+      final updated = await remote.updateWaitress(
         id: id,
         name: name,
         phone: phone,
         active: active,
       );
-    } catch (e) {
-      throw mapDioException(e);
+      final cached = local.getWaitresses();
+      if (cached != null) {
+        try {
+          await local.saveWaitresses([
+            for (final staff in cached)
+              if (staff.id == id) updated else staff,
+          ]);
+        } catch (_) {
+          // La mutation API reste réussie même si le cache local échoue.
+        }
+      }
+      return updated;
+    } catch (error) {
+      throw mapDioException(error);
     }
   }
 }

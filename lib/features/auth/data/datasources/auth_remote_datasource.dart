@@ -15,6 +15,7 @@ class AuthRemoteDataSource {
     final response = await dio.post(
       ApiConstants.login,
       data: {'email': email, 'password': password},
+      options: Options(extra: {'skipAuth': true}),
     );
     return AuthResponseModel.fromJson(
       Map<String, dynamic>.from(response.data as Map),
@@ -31,6 +32,7 @@ class AuthRemoteDataSource {
   }) async {
     final response = await dio.post(
       ApiConstants.register,
+      options: Options(extra: {'skipAuth': true}),
       data: {
         'name': name,
         'prename': prename,
@@ -51,7 +53,7 @@ class AuthRemoteDataSource {
     final response = await dio.post(
       ApiConstants.refreshToken,
       data: {'refresh_token': refreshToken},
-      options: Options(extra: {'skipAuthRefresh': true}),
+      options: Options(extra: {'skipAuthRefresh': true, 'skipAuth': true}),
     );
     return AuthResponseModel.fromJson(
       Map<String, dynamic>.from(response.data as Map),

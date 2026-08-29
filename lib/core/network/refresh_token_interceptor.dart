@@ -34,7 +34,7 @@ class RefreshTokenInterceptor extends Interceptor {
     }
 
     try {
-      final accessToken = await _refreshAccessToken(refreshToken);
+      final accessToken = await refreshAccessToken(refreshToken);
       if (accessToken == null || accessToken.isEmpty) {
         handler.next(err);
         return;
@@ -50,7 +50,7 @@ class RefreshTokenInterceptor extends Interceptor {
     }
   }
 
-  Future<String?> _refreshAccessToken(String refreshToken) async {
+  Future<String?> refreshAccessToken(String refreshToken) async {
     final existing = _refreshCompleter;
     if (existing != null) {
       return existing.future;

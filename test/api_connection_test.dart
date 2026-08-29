@@ -55,7 +55,7 @@ void main() {
     );
 
     expect(user.email, 'admin@lifetown.com');
-    expect(adapter.lastRequest?.headers['Authorization'], 'Bearer existing-token');
+    expect(adapter.lastRequest?.headers['Authorization'], isNull);
     expect(await storage.getAccessToken(), 'api-token');
     expect(await storage.getRefreshToken(), 'api-refresh');
   });

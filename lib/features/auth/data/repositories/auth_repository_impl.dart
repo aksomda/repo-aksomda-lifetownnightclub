@@ -1,10 +1,12 @@
 import '../../../../core/database/secure_token_storage.dart';
+import '../../../../core/errors/app_exception.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../models/auth_response_model.dart';
 
-class AuthRepositoryImpl implements AuthRepository {
+/// Implémente l'authentification et la persistance sécurisée de session.\nclass AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final SecureTokenStorage tokenStorage;
 
@@ -13,13 +15,17 @@ class AuthRepositoryImpl implements AuthRepository {
     required this.tokenStorage,
   });
 
-  Future<User> _saveSession(Future<AuthResponseModel> request) async {
-    final response = await request;
-    await tokenStorage.saveTokens(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
-    );
-    return response.user;
+  Future<User> saveSession(Future<AuthResponseModel> request) async {
+    try {
+      final response = await request;
+      await tokenStorage.saveTokens(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+      return response.user;
+    } catch (error) {
+      throw mapDioException(error);
+    }
   }
 
   @override
@@ -27,7 +33,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) {
-    return _saveSession(
+    return saveSession(
       remoteDataSource.login(email: email, password: password),
     );
   }
@@ -41,7 +47,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
   }) {
-    return _saveSession(
+    return saveSession(
       remoteDataSource.register(
         name: name,
         prename: prename,
@@ -69,17 +75,23 @@ class AuthRepositoryImpl implements AuthRepository {
       return null;
     }
 
-    final response = await remoteDataSource.refreshToken(
-      refreshToken: refreshToken,
-    );
-    if (response.accessToken.isEmpty) {
-      return null;
-    }
+    try {
+      final response = await remoteDataSource.refreshToken(
+        refreshToken: refreshToken,
+      );
+      if (response.accessToken.isEmpty) {
+        await tokenStorage.clear();
+        throw const AppException('Impossible de renouveler la session.');
+      }
 
-    await tokenStorage.saveTokens(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken ?? refreshToken,
-    );
-    return response.accessToken;
+      await tokenStorage.saveTokens(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken ?? refreshToken,
+      );
+      return response.accessToken;
+    } catch (error) {
+      await tokenStorage.clear();
+      throw mapDioException(error);
+    }
   }
 }

@@ -4,22 +4,27 @@ import '../../domain/repositories/order_repository.dart';
 import '../datasources/order_local_datasource.dart';
 import '../datasources/order_remote_datasource.dart';
 
+/// Implémente les commandes avec cache de lecture et synchronisation des écritures.
 class OrderRepositoryImpl implements OrderRepository {
   final OrderRemoteDataSource remote;
   final OrderLocalDataSource local;
+
   OrderRepositoryImpl({required this.remote, required this.local});
 
   @override
   Future<List<OrderEntity>> getOrders() async {
     try {
-      final r = await remote.getOrders();
-      await local.saveOrders(r);
-      return r;
-    } catch (e) {
-      // Hors-ligne (ou API en erreur) : on retombe sur les dernières
-      // commandes mises en cache s'il y en a, sinon erreur utilisateur claire.
-      if (local.hasData) return local.getOrders();
-      throw mapDioException(e);
+      final result = await remote.getOrders();
+      try {
+        await local.saveOrders(result);
+      } catch (_) {
+        // Une panne de persistance locale ne doit pas masquer une réponse API valide.
+      }
+      return result;
+    } catch (error) {
+      final cached = local.getOrders();
+      if (cached != null) return cached;
+      throw mapDioException(error);
     }
   }
 
@@ -30,16 +35,22 @@ class OrderRepositoryImpl implements OrderRepository {
     required List<OrderItem> items,
   }) async {
     try {
-      return await remote.createOrder(
+      final created = await remote.createOrder(
         tableId: tableId,
         waitressId: waitressId,
         items: items,
       );
-    } catch (e) {
-      // La création d'une commande nécessite le réseau : impossible de
-      // fonctionner hors-ligne pour une écriture, on remonte juste
-      // un message d'erreur clair.
-      throw mapDioException(e);
+      final cached = local.getOrders();
+      try {
+        await local.saveOrders(
+          cached == null ? [created] : [...cached, created],
+        );
+      } catch (_) {
+        // La mutation API reste réussie même si le cache local échoue.
+      }
+      return created;
+    } catch (error) {
+      throw mapDioException(error);
     }
   }
 
@@ -49,9 +60,24 @@ class OrderRepositoryImpl implements OrderRepository {
     required String status,
   }) async {
     try {
-      return await remote.updateStatus(orderId: orderId, status: status);
-    } catch (e) {
-      throw mapDioException(e);
+      final updated = await remote.updateStatus(
+        orderId: orderId,
+        status: status,
+      );
+      final cached = local.getOrders();
+      if (cached != null) {
+        try {
+          await local.saveOrders([
+            for (final order in cached)
+              if (order.id == orderId) updated else order,
+          ]);
+        } catch (_) {
+          // La mutation API reste réussie même si le cache local échoue.
+        }
+      }
+      return updated;
+    } catch (error) {
+      throw mapDioException(error);
     }
   }
 }

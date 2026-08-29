@@ -17,6 +17,25 @@ class FakeRemote extends OrderRemoteDataSource {
     if (fail) throw Exception('offline');
     return items;
   }
+
+  @override
+  Future<OrderModel> createOrder({
+    String? tableId,
+    String? waitressId,
+    required List<OrderItem> items,
+  }) async {
+    if (fail) throw Exception('offline');
+    return _order('created', 'en_cours');
+  }
+
+  @override
+  Future<OrderModel> updateStatus({
+    required String orderId,
+    required String status,
+  }) async {
+    if (fail) throw Exception('offline');
+    return _order(orderId, status);
+  }
 }
 
 OrderModel _order(String id, String status) => OrderModel(
@@ -59,7 +78,7 @@ void main() {
     final remote = FakeRemote([_order('2', 'en_cours')]);
     final r = OrderRepositoryImpl(remote: remote, local: local);
     await r.getOrders();
-    expect(local.getOrders().single.id, '2');
+    expect(local.getOrders()!.single.id, '2');
   });
 
   test('retourne le cache quand l\'API est injoignable (hors-ligne)', () async {
@@ -67,6 +86,26 @@ void main() {
     final remote = FakeRemote([])..fail = true;
     final r = OrderRepositoryImpl(remote: remote, local: local);
     expect((await r.getOrders()).single.id, '3');
+  });
+
+  test('synchronise une commande créée dans le cache', () async {
+    await local.saveOrders([_order('1', 'en_cours')]);
+    final remote = FakeRemote([]);
+    final r = OrderRepositoryImpl(remote: remote, local: local);
+
+    await r.createOrder(items: const []);
+
+    expect(local.getOrders()!.map((order) => order.id), containsAll(['1', 'created']));
+  });
+
+  test('synchronise le statut modifié dans le cache', () async {
+    await local.saveOrders([_order('1', 'en_cours')]);
+    final remote = FakeRemote([]);
+    final r = OrderRepositoryImpl(remote: remote, local: local);
+
+    await r.updateOrderStatus(orderId: '1', status: 'payee');
+
+    expect(local.getOrders()!.single.status, 'payee');
   });
 
   test('remonte une erreur utilisateur si API et cache sont vides', () async {

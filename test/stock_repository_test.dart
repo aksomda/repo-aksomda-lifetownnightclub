@@ -16,6 +16,21 @@ class FakeRemote extends StockRemoteDataSource {
     if (fail) throw Exception('offline');
     return items;
   }
+
+  @override
+  Future<StockItemModel> updateQuantity({
+    required String productId,
+    required double quantity,
+  }) async {
+    if (fail) throw Exception('offline');
+    return StockItemModel(
+      productId: productId,
+      productName: 'Coca',
+      quantity: quantity,
+      minimumQuantity: 10,
+      unit: 'bouteille',
+    );
+  }
 }
 
 void main() {
@@ -58,7 +73,7 @@ void main() {
     ]);
     final r = StockRepositoryImpl(remote: remote, local: local);
     await r.getStocks();
-    expect(local.getStocks().single.productName, 'Coca');
+    expect(local.getStocks()!.single.productName, 'Coca');
   });
 
   test('retourne le cache quand l\'API est injoignable (hors-ligne)', () async {
@@ -74,6 +89,24 @@ void main() {
     final remote = FakeRemote([])..fail = true;
     final r = StockRepositoryImpl(remote: remote, local: local);
     expect((await r.getStocks()).single.productName, 'Fanta');
+  });
+
+  test('synchronise une quantité modifiée dans le cache', () async {
+    await local.saveStocks([
+      const StockItemModel(
+        productId: '1',
+        productName: 'Coca',
+        quantity: 80,
+        minimumQuantity: 10,
+        unit: 'bouteille',
+      ),
+    ]);
+    final remote = FakeRemote([]);
+    final r = StockRepositoryImpl(remote: remote, local: local);
+
+    await r.updateQuantity(productId: '1', quantity: 25);
+
+    expect(local.getStocks()!.single.quantity, 25);
   });
 
   test('remonte une erreur utilisateur si API et cache sont vides', () async {
