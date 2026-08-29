@@ -6,7 +6,8 @@ import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../models/auth_response_model.dart';
 
-/// Implémente l'authentification et la persistance sécurisée de session.\nclass AuthRepositoryImpl implements AuthRepository {
+/// Implémente l'authentification et la persistance sécurisée de session.
+class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final SecureTokenStorage tokenStorage;
 
@@ -29,10 +30,7 @@ import '../models/auth_response_model.dart';
   }
 
   @override
-  Future<User> login({
-    required String email,
-    required String password,
-  }) {
+  Future<User> login({required String email, required String password}) {
     return saveSession(
       remoteDataSource.login(email: email, password: password),
     );
