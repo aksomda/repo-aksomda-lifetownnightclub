@@ -75,6 +75,7 @@ AppException mapDioException(Object error) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.sendTimeout:
+      case DioExceptionType.transformTimeout:
         return const NetworkException();
       case DioExceptionType.badCertificate:
         return const NetworkException(

@@ -30,7 +30,10 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<User> login({required String email, required String password}) {
+  Future<User> login({
+    required String email,
+    required String password,
+  }) {
     return saveSession(
       remoteDataSource.login(email: email, password: password),
     );
